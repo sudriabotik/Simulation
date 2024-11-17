@@ -3,7 +3,7 @@ import pygame
 # Constants for the table size in mm and image path
 TABLE_WIDTH_MM = 3000
 TABLE_HEIGHT_MM = 2000
-IMAGE_PATH = 'map_cfdr_2025.png'  # Update this to your image path
+IMAGE_PATH = 'botikplaymat.jpg'  # Update this to your image path
 
 # Screen setup
 Screen_WIDTH, Screen_HEIGHT = 900, 600
