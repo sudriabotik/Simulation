@@ -73,7 +73,7 @@ class Robot:
     def calculate_target_angle(self, target_mm_x, target_mm_y):
         self.distance_x_to_target = self.mm_x - target_mm_x
         self.distance_y_to_target = target_mm_y - self.mm_y 
-        self.distance_to_target = math.hypot(self.distance_x_to_target, self.distance_y_to_target)
+        self.distance_to_target = int (math.hypot(self.distance_x_to_target, self.distance_y_to_target))
         print(  "distance_x: ", self.distance_x_to_target, "  distance_y: ", self.distance_y_to_target)
 
         self.angle_to_target = int(math.degrees(math.atan2(self.distance_y_to_target, self.distance_x_to_target )))
@@ -85,7 +85,6 @@ class Robot:
         print("angle diff to target: ", self.angle_diff_to_target)
         return self.angle_to_target
     
-
 
     def move_towards(self, distance_to_target):
         # Convertir l'angle en radians
@@ -116,80 +115,3 @@ class Robot:
         
         # Retourner la distance restante pour savoir si le robot a fini de bouger
         return distance_to_target
-
-
-def conversion_From_mmx_To_px_x_2(mm_x):
-    px_x = ((TABLE_WIDTH_MM - mm_x) /TABLE_WIDTH_MM)*Screen_WIDTH
-    return px_x
-
-''' 
-
-    def move_towards_target(self, target_mm_x, target_mm_y, dt):
-        # Calculate distance to the target
-        dx = target_mm_x - self.x
-        dy = self.y - target_mm_y
-        distance_to_target = math.hypot(dx, dy)
-        
-        # Calculate target angle and angle difference
-        target_angle = self.calculate_target_angle(target_mm_x, target_mm_y)
-        angle_diff = (target_angle - self.angle + 180) % 360 - 180
-
-        # Rotate and move towards target
-        if abs(angle_diff) > 1:
-            self.angle += 1 * (1 if angle_diff > 0 else -1)
-            self.angle %= 360
-            self.speed = 0
-        else:
-            self.angle = target_angle
-            self.speed = min(MAX_SPEED_MM_S, MAX_ACCEL_MM_S2 * distance_to_target / 50)
-            self.x += self.speed * dt * math.cos(math.radians(self.angle))
-            self.y -= self.speed * dt * math.sin(math.radians(self.angle))
-
-        return distance_to_target
-    def calculate_target_angle_relatif_absolu_distance(self, target_mm_x, target_mm_y):
-        print("Début du go_to")
-
-        # Initialisation des variables
-        rotation_to_do_relatif = 0
-        angle_objectif_absolue = 0
-
-        # Calcul des distances en x et y
-        to_do_x = self.mm_x - target_mm_x
-        to_do_y = self.mm_y - target_mm_y
-
-        print(f"to do_y: {to_do_y}  to do_x: {to_do_x}")
-
-        # Calcul de la distance et de l'angle en degrés
-        distance = math.sqrt(to_do_x ** 2 + to_do_y ** 2)
-        teta_calcule = abs(math.degrees(math.atan(abs(to_do_y) / abs(to_do_x))))
-
-        # Calcul de l'angle objectif en fonction du quadrant
-        if to_do_y > 0 and to_do_x > 0:
-            angle_objectif_absolue = 90 + teta_calcule
-            print(" (90 + teta_calcule) ")
-        elif to_do_y < 0 and to_do_x > 0:
-            angle_objectif_absolue = 90 - teta_calcule
-            print(" (90 - teta_calcule) ")
-        elif to_do_y > 0 and to_do_x < 0:
-            angle_objectif_absolue = 270 - teta_calcule
-            print(" (270 - teta_calcule) ")
-        elif to_do_y < 0 and to_do_x < 0:
-            angle_objectif_absolue = 270 + teta_calcule
-            print(" (270 + teta_calcule) ")
-
-        print(f"teta_objectif: {angle_objectif_absolue}")
-
-        # Calcul de l'angle de rotation nécessaire
-        rotation_to_do_relatif = angle_objectif_absolue - self.angle
-
-        if rotation_to_do_relatif >= 180:
-            rotation_to_do_relatif = rotation_to_do_relatif - 360
-        elif rotation_to_do_relatif < -180:
-            rotation_to_do_relatif = rotation_to_do_relatif + 360
-
-        #print(f"teta_goal: {teta_goal}")
-        print("initial_x:",self.mm_x,"  initial_y:",self.mm_y,"  teta_goal :",rotation_to_do_relatif)
-        return rotation_to_do_relatif, angle_objectif_absolue, distance
-        
-
-'''
