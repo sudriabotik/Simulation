@@ -1,0 +1,15 @@
+
+
+
+fdd.reculer("0200","090",ser)
+
+fdd.avancer("0250","030",ser)
+
+fdd.orienter("090","050",ser)
+
+fdd.cibler("0650","1300","030",ser)
+
+fdd.rejoindre("0650","1300","1","100",ser)
+
+
+

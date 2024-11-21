@@ -1,7 +1,7 @@
 import pygame
 import math
 import robot
-from robot import Robot 
+from robot import Robot ,ROTATION_THRESHOLD
 from setup import init_pygame,load_image, TABLE_WIDTH_MM, TABLE_HEIGHT_MM, Screen_WIDTH, Screen_HEIGHT
 
 screen = init_pygame()
@@ -21,19 +21,15 @@ rect_robot.center = (robot.px_x, robot.px_y)  # Définit une position initiale
 font = pygame.font.Font(None, 36)
 ####debug_fin###
 
-#target_mm_x = 0
-#target_mm_y = 0
+target_mm_x = robot.mm_x
+target_mm_y = robot.mm_y
 target_angle = robot.angle
 
-def normalize_angle(angle):
-    angle = angle % 360  
-    if angle > 180:
-        angle -= 360  
-    return angle
-
 running = True
-
+clock = pygame.time.Clock()  # Horloge pour gérer le temps
 while running:
+    dt = clock.tick(60) / 1000  # Limite à 60 FPS et conversion en secondes
+    #print("dt: ", dt)
     screen.fill((0, 0, 0))
     screen.blit(scaled_vinyle, (0, 0))
     for event in pygame.event.get():
@@ -47,6 +43,12 @@ while running:
             print("target_mm_x: ", target_mm_x, "  target_mm_y: ", target_mm_y)
             target_angle = robot.calculate_target_angle(target_mm_x, target_mm_y)
 
+    robot.update_rotation(dt)
+
+    if abs(robot.normalize_angle(target_angle - robot.angle)) < ROTATION_THRESHOLD:
+        if robot.distance_to_target >=1 :
+            robot.distance_to_target = robot.move_towards(robot.distance_to_target, dt)
+    ''' 
     angle_diff = normalize_angle(target_angle - robot.angle) 
     
     if   ( abs(angle_diff) >= 1 ):
@@ -55,12 +57,13 @@ while running:
         print("rotation // angle_diff:", angle_diff, "   robot.angle:", robot.angle)
     else:
         if robot.distance_to_target >=1 :
-            robot.distance_to_target =robot.move_towards(robot.distance_to_target)
-        
+            robot.distance_to_target =robot.move_towards(robot.distance_to_target, dt)
+    '''
         ### Mise à jour graphique ###
     robot.angle_px = robot.conversion_trigo_transform_rotate(robot.angle) 
     robot.px_x = robot.conversion_From_mmx_To_px_x(robot.mm_x)
-    robot.px_y = robot.conversion_From_mmy_To_px_y(robot.mm_y)    
+    robot.px_y = robot.conversion_From_mmy_To_px_y(robot.mm_y)
+
     rect_robot = image_robot.get_rect(center=(robot.px_x, robot.px_y))
     rotated_image = pygame.transform.rotate(image_robot, robot.angle_px) 
     rotated_rect = rotated_image.get_rect(center=rect_robot.center) 
