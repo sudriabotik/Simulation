@@ -8,14 +8,34 @@ INITIAL_X_POSITION = 400
 INITIAL_Y_POSITION = 500
 INITIAL_ANGLE = 90
 
-MAX_SPEED_MM_S = 300  # Vitesse maximale en mm/s
+MAX_SPEED_MM_S = 500  # Vitesse maximale en mm/s
 MAX_ACCEL_MM_S2 = 500  # Accélération maximale en mm/s^2
 MAX_TURNING_SPEED = 90  # Vitesse de rotation en degrés par seconde
 ROTATION_THRESHOLD = 1
 
-class Robot:
+class Graphique:
+    def __init__(self, robot, image_robot, screen):
+        self.robot = robot  # Référence à l'instance de Robot existante
+        self.image_robot = image_robot
+        self.screen = screen
+        self.font = pygame.font.Font(None, 36)
 
-    def __init__(self, x= INITIAL_X_POSITION, y= INITIAL_Y_POSITION, angle=INITIAL_ANGLE, speed=0):
+    def refesh_graphique(self):
+        self.robot.angle_px =self.robot.conversion_trigo_transform_rotate(self.robot.angle) 
+        self.robot.px_x = self.robot.conversion_From_mmx_To_px_x(self.robot.mm_x)
+        self.robot.px_y = self.robot.conversion_From_mmy_To_px_y(self.robot.mm_y)
+
+        rotated_image = pygame.transform.rotate(self.image_robot, self.robot.angle_px)
+        robot_rect = rotated_image.get_rect(center=(self.robot.px_x, self.robot.px_y))
+        self.screen.blit(rotated_image, robot_rect)
+
+        coords_text = self.font.render(f"X: {int(self.robot.mm_x)} mm, Y: {int(self.robot.mm_y)} mm, O: {int(self.robot.angle)}", True, (255, 255, 255))
+        self.screen.blit(coords_text, (10, 10))  # Position du texte en haut à gauche
+
+        pygame.display.update()
+
+class Robot(Graphique):
+    def __init__(self, screen, image_robot= None, x= INITIAL_X_POSITION, y= INITIAL_Y_POSITION, angle=INITIAL_ANGLE, speed=0):
         self.mm_x = x
         self.mm_y = y 
         self.px_x = ((TABLE_WIDTH_MM - x) /TABLE_WIDTH_MM)*Screen_WIDTH #Due to the origin point on the top left, we need to invert the axis: 
@@ -36,6 +56,13 @@ class Robot:
         self.px_height = (ROBOT_HEIGHT_MM/TABLE_HEIGHT_MM)*Screen_HEIGHT
         self.mm_width = ROBOT_WIDTH_MM
         self.mm_height = ROBOT_HEIGHT_MM
+
+        if image_robot and screen:
+            self.graphique = Graphique(self, image_robot, screen)
+        else:
+            self.graphique = None  # Si l'image ou l'écran manque, pas de rendu graphique
+            print("erreur, missing arg: image ou screen")
+
 
     def conversion_From_mmx_To_px_x(self, mm_x):
         px_x = ((TABLE_WIDTH_MM - mm_x) /TABLE_WIDTH_MM)*Screen_WIDTH
@@ -116,30 +143,13 @@ class Robot:
         rotation_step = self.calculate_rotation_step(dt)
         self.angle += rotation_step
         self.angle = self.normalize_angle(self.angle)
+        if self.graphique:
+            self.graphique.refesh_graphique()
         return rotation_step
-
-
-    ''' 
-    def update_rotation(self, target_angle, dt):
-        angle_diff = self.normalize_angle(target_angle - self.angle)
-        rotation_step = self.turning_speed * dt  # Rotation par frame
-        
-        if abs(angle_diff) <= rotation_step:
-            self.angle = target_angle  # Arrivé à l'angle cible
-        else:
-            self.angle += rotation_step * (1 if angle_diff > 0 else -1)
-            self.angle = self.normalize_angle(self.angle)
-            print("rotation step: ", rotation_step, "  angfle_diff: ", angle_diff, "  angle: ", self.angle)
-    '''
-
-
-
 
     def move_towards(self, distance_to_target, dt):
         # Mettre à jour la vitesse
         self.update_speed(dt, distance_to_target)
-
-        # Convertir l'angle en radians
         radians = math.radians(self.angle)
         
         # Calculer les incréments en fonction de la vitesse
@@ -161,10 +171,19 @@ class Robot:
             # Réduire la distance restante
             distance_to_target -= distance_step
             print("distance step: ", distance_step,"  distance restante: ", distance_to_target)
-        # Mettre à jour la position
         self.mm_x += dx
         self.mm_y += dy
         
-        
-        # Retourner la distance restante pour savoir si le robot a fini de bouger
+        if self.graphique:
+            self.graphique.refesh_graphique()
+
         return distance_to_target
+    
+    ##########
+    ########## FONCTION ASSERVISSEMENT ##########
+    ##########
+
+    def avancer(self, distance, ratio_vitesse, dt):
+        global MAX_SPEED_MM_S 
+        MAX_SPEED_MM_S = MAX_SPEED_MM_S * ratio_vitesse
+        self.move_towards(distance, dt)
