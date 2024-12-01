@@ -1,5 +1,7 @@
 import pygame
 
+# c'est le setup
+
 # Constants for the table size in mm and image path
 TABLE_WIDTH_MM = 3000
 TABLE_HEIGHT_MM = 2000
