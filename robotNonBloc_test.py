@@ -43,10 +43,12 @@ while running:
     #    if robot.distance_to_target >=DISTANCE_THRESHOLD :
     #        robot.distance_to_target = robot.move_towards(robot.distance_to_target, dt)
     if a == 1 and not robot.getIfBusy() :
+        print("first translation")
         robot.translate(1000, 100)
         a = 2
     elif a == 2 and not robot.getIfBusy() :
-        robot.translate(-500, 20)
+        print("second translation")
+        robot.translate(-1000, 50)
         a = 0
     
     robot.updatePosition()

@@ -20,6 +20,8 @@ MAX_TURNING_SPEED = 90*2  # Vitesse de rotation en degrés par seconde
 ROTATION_THRESHOLD = 1
 DISTANCE_THRESHOLD = 1
 
+FPS = 30
+
 class Graphique:
     def __init__(self, robot, image_robot, screen, scaled_vinyle):
         self.robot = robot  # Référence à l'instance de Robot existante
@@ -49,25 +51,16 @@ class MovementState(Enum) :
     TRANSLATE = 1
     ROTATE = 2
 
-class Movement :
-
+class Translation :
     def __init__(self) :
-        self.timeStart = time.time()
-
-class Translation(Movement) :
-
-    def __init__(self) :
-        self.initialPos = (0, 0) # x and y in millimeter
-        self.finalPos = (0, 0) # x and y in millimeter
-        self.movementDirection = (0, 0) # unit vector in the direction of the movement
-        self.totalDistance = 0
-
+        self.maxSpeed = 0
+        # target final position (in mm)
+        self.finalPos = (0, 0)
+        # unit vector in the direction of the translation (in robot space)
+        self.direction = (0, 0)
         self.rampingTime = 0
         self.rampingDistance = 0
-        self.totalTime = 0
-    
-    def __str__(self) -> str:
-        return f"start ({self.initialPos[0]}, {self.initialPos[1]}) ; end ({self.finalPos[0]}, {self.finalPos[1]}) ; ramping time {self.rampingTime}s ; rampingDistance {self.rampingDistance}mm"
+
 
 class RobotNonBloc :
 
@@ -96,9 +89,11 @@ class RobotNonBloc :
 
         # variables to keep track of current movement type and its properties
         self.currentState = MovementState.IDLE
-        self.movementTimeStart = 0 # in seconds
-        # contains a child of the Movement class. Used to store various info about the current motion being executed, None otherwise
+        self.movementTarger = None
         self.movementArgs = None
+
+        # variables for the update loop
+        self.updateLoopClock = pygame.time.Clock()
 
         if image_robot and screen and scaled_vinyle:
             self.graphique = Graphique(self, image_robot, screen, scaled_vinyle)
@@ -113,32 +108,81 @@ class RobotNonBloc :
     def getIfBusy(self) :
         return self.currentState != MovementState.IDLE
     
+    def update_translation_target_speed(self, distance):
+        # Calculate the deceleration distance based on the robot's max speed and acceleration
+        deceleration_distance = self.movementArgs.rampingDistance
+
+        if distance <= deceleration_distance :
+            # Reduce speed proportionally to the remaining distance
+            self.target_speed = max(0, (distance / deceleration_distance) * self.movementArgs.maxSpeed)
+        else:
+            # Maintain maximum speed
+            self.target_speed = self.movementArgs.maxSpeed
+    
+    def update_translation_speed(self, dt, distance_restante):
+        #distance_restante = abs(distance_restante) # pour gérer les valeur négative
+        self.update_translation_target_speed(distance_restante)  # Met à jour la vitesse cible en fonction de la distance
+        if self.speed < self.target_speed:
+            self.speed = min(self.speed + self.acceleration * dt, self.target_speed)
+            #print("update_augmentation_speed: ", self.speed)
+        elif self.speed > self.target_speed:
+            self.speed = max(self.speed - self.acceleration * dt, self.target_speed)
+            #print("update_diminution_speed: ", self.speed)
+    
     def updatePosition(self) :
-        print(self.currentState)
+        #print(self.currentState)
+        # dt in seconds
+        dt = self.updateLoopClock.tick(FPS) / 1000
         if self.currentState == MovementState.TRANSLATE :
-            timeElapsed = time.time() - self.movementTimeStart
-            print(self.movementArgs.totalTime)
-            # check if we are in the start ramp, steady speed or braking ramp
-            if timeElapsed < self.movementArgs.rampingTime :
-                distanceFromStart = self.getDistanceCoveredFromAccel(timeElapsed)
-            elif timeElapsed < self.movementArgs.totalTime - self.movementArgs.rampingTime :
-                distanceFromStart = self.movementArgs.rampingDistance + MAX_SPEED_MM_S * (timeElapsed - self.movementArgs.rampingTime)
-            elif timeElapsed < self.movementArgs.totalTime :
-                distanceFromStart = self.movementArgs.totalDistance - self.getDistanceCoveredFromAccel(self.movementArgs.totalTime - timeElapsed)
-            else :
-                self.movementArgs = None
+
+            distance_to_target = int(math.hypot(self.mm_x - self.movementArgs.finalPos[0], self.mm_y - self.movementArgs.finalPos[1]))
+
+            # means the translation is done
+            if distance_to_target < DISTANCE_THRESHOLD :
                 self.currentState = MovementState.IDLE
                 return
-                
-            print(timeElapsed)
-            self.mm_x = self.movementArgs.initialPos[0] + self.movementArgs.movementDirection[0] * distanceFromStart
-            self.mm_y = self.movementArgs.initialPos[1] + self.movementArgs.movementDirection[1] * distanceFromStart
+            
+
+            self.update_translation_speed(dt, distance_to_target)
+
+            # prevents overshooting of the target
+            if self.speed * dt > distance_to_target :
+                self.speed = self.speed * (distance_to_target/(self.speed*dt))
+            
+            
+            self.mm_x += self.movementArgs.direction[0] * self.speed * dt
+            self.mm_y += self.movementArgs.direction[1] * self.speed * dt
+
+            
+
+            
+            
     
-    def getDistanceCoveredFromAccel(self, t) :
-        return ((t**2)/2)*MAX_ACCEL_MM_S2    
+    
+    """For a translation, return how much distance and time will be spent at the beginning or end in the ramping state. Max speed in mm/s"""
+    def getRampingDistance(self, totalTranslationDistance, maxSpeed) :
+        rampingTime = MAX_SPEED_MM_S / maxSpeed
+        rampingDistance = (maxSpeed ** 2) / (2 * MAX_ACCEL_MM_S2)
+
+        if rampingDistance > totalTranslationDistance/2 :
+            ratio = ((totalTranslationDistance/2)/rampingDistance)
+            rampingTime = rampingTime * ratio
+            rampingDistance = totalTranslationDistance / 2
+        
+        return rampingDistance, rampingTime
+    
+    '''Unused function'''
+    def estimateTimeNeededForTranslation(self, distance) :
+
+        rampingDistance, rampingTime = self.getRampingDistance(distance)        
+
+        totalTime = rampingTime * 2 + (distance - rampingDistance*2) / MAX_SPEED_MM_S
+        return totalTime
+    
 
     
     def translate(self, distance, speedPercent = 100) :
+        print("new translation")
         if self.getIfBusy() :
             return
         
@@ -146,39 +190,23 @@ class RobotNonBloc :
         if distance < 0 :
             direction = -1
         distance = abs(distance)
+        print(direction)
+        print(distance)
         
         self.currentState = MovementState.TRANSLATE
 
-        desiredSpeed = (MAX_SPEED_MM_S / 100) * speedPercent
-
-        # calculate on what distance the robot need to accelerate to reach the desired speed
-
-        #rampingDistance = (desiredSpeed ** 2) / (2 * MAX_ACCEL_MM_S2)
-        rampingTime = MAX_SPEED_MM_S / MAX_ACCEL_MM_S2
-        rampingDistance = self.getDistanceCoveredFromAccel(rampingTime)
-
-        if rampingDistance > distance/2 :
-            ratio = ((distance/2)/rampingDistance)
-            rampingTime = rampingTime * ratio
-            rampingDistance = distance / 2
         
-        totalTime = rampingTime * 2 + (distance - rampingDistance*2) / MAX_SPEED_MM_S
-
         self.movementArgs = Translation()
-        self.movementArgs.totalDistance = distance
-        self.movementArgs.initialPos = (self.mm_x, self.mm_y)
-        self.movementArgs.finalPos = (self.mm_x + math.cos(self.angle/180*math.pi)*distance, self.mm_y + math.sin(self.angle/180*math.pi)*distance)
-        self.movementArgs.rampingTime = rampingTime
-        self.movementArgs.rampingDistance = rampingDistance
-        self.movementArgs.totalTime = totalTime
-        self.movementArgs.movementDirection = (math.cos(self.angle) * direction, math.sin(self.angle) * direction)
+        self.movementArgs.maxSpeed = (MAX_SPEED_MM_S / 100) * speedPercent
+        self.movementArgs.direction = (math.cos(self.angle/180*math.pi) * direction, math.sin(self.angle/180*math.pi) * direction)
+        print(self.movementArgs.direction)
+        self.movementArgs.finalPos = (self.mm_x + self.movementArgs.direction[0]*distance, self.mm_y + self.movementArgs.direction[1]*distance)
+        self.movementArgs.rampingDistance, self.movementArgs.rampingTime = self.getRampingDistance(distance, self.movementArgs.maxSpeed)
         
-        self.movementTimeStart = time.time()
-        
-        print(self.movementArgs)
+
+        # resets the value of dt in the update loop since it is the start of a new movement
+        self.updateLoopClock.tick()
+
+        print(self.movementArgs.maxSpeed)
     
     
-
-testBot = RobotNonBloc()
-
-testBot.translate(100)
