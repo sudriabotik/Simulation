@@ -20,6 +20,7 @@ rect_robot.center = (robot.px_x, robot.px_y)  # Définit une position initiale
 ###surafce_fin###  
 
 robot = RobotNonBloc(scaled_vinyle, screen, image_robot)
+robot2 = RobotNonBloc(scaled_vinyle, screen, image_robot)
 
 target_mm_x = robot.mm_x
 target_mm_y = robot.mm_y
@@ -29,6 +30,11 @@ a = 1
 running = True
 #clock = pygame.time.Clock()  # Horloge pour gérer le temps
 while running:
+
+    screen.fill((0, 0, 0))
+    screen.blit(scaled_vinyle, (0, 0))
+    
+
     #dt = clock.tick(60) / 1000  # Limite à 60 FPS et conversion en secondes
     #print("dt: ", dt)
     screen.fill((0, 0, 0))
@@ -49,10 +55,14 @@ while running:
     elif a == 2 and not robot.getIfBusy() :
         print("second translation")
         robot.translate(-1000, 50)
+        robot2.translate(1000, 80)
         a = 0
     
     robot.updatePosition()
     robot.updateGraphics()
+    robot2.updatePosition()
+    robot2.updateGraphics()
+
     pygame.display.update()
     
 

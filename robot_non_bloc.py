@@ -31,8 +31,6 @@ class Graphique:
         self.scaled_vinyle = scaled_vinyle
 
     def refesh_graphique(self):
-        self.screen.fill((0, 0, 0))
-        self.screen.blit(self.scaled_vinyle, (0, 0))
         self.robot.angle_px = Converter.conversion_trigo_transform_rotate(self.robot.angle) 
         self.robot.px_x = Converter.conversion_From_mmx_To_px_x(self.robot.mm_x)
         self.robot.px_y = Converter.conversion_From_mmy_To_px_y(self.robot.mm_y)
@@ -44,7 +42,7 @@ class Graphique:
         coords_text = self.font.render(f"X: {int(self.robot.mm_x)} mm, Y: {int(self.robot.mm_y)} mm, O: {int(self.robot.angle)}", True, (255, 255, 255))
         self.screen.blit(coords_text, (10, 10))  # Position du texte en haut à gauche
 
-        pygame.display.update()
+        
 
 class MovementState(Enum) :
     IDLE = 0
