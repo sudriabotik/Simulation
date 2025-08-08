@@ -11,12 +11,17 @@ file_strat_path = 'test.txt'
 
 robot = Robot(scaled_vinyle, screen)
 ###surface###
-image_robot = pygame.Surface((robot.px_width, robot.px_height))  #pygame.SRCALPHA 
+image_robot = pygame.Surface((robot.px_width, robot.px_height))
 image_robot.fill((0,255,0))
 image_robot.set_colorkey((0,0,0))
-rect_robot = image_robot.get_rect()  # Crée un rect pour le rectangle
-rect_robot.center = (robot.px_x, robot.px_y)  # Définit une position initiale
-###surafce_fin###  
+
+# Dessiner une bande bleue sur l'avant (par exemple, le côté supérieur du rectangle)
+band_height = 8  # hauteur de la bande en pixels
+pygame.draw.rect(image_robot, (0, 0, 255), (0, 0, robot.px_width, band_height))
+
+rect_robot = image_robot.get_rect()
+rect_robot.center = (robot.px_x, robot.px_y)
+###surface_fin### 
 
 robot = Robot(scaled_vinyle, screen, image_robot)
 

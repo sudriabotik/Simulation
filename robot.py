@@ -8,9 +8,10 @@ INITIAL_X_POSITION = 300
 INITIAL_Y_POSITION = 950
 INITIAL_ANGLE = 0
 
-MAX_SPEED_MM_S = 400*2  # Vitesse maximale en mm/s
-MAX_ACCEL_MM_S2 = 600*2  # Accélération maximale en mm/s^2
-MAX_TURNING_SPEED = 90*2  # Vitesse de rotation en degrés par seconde
+MAX_SPEED_MM_S = 1000  # Vitesse maximale en mm/s
+MAX_ACCEL_MM_S2 = 800  # Accélération maximale en mm/s^2
+MAX_TURNING_SPEED = 500  # Vitesse de rotation en degrés par seconde
+MAX_TURNING_ACCEL = 300  # Accélération angulaire maximale en degrés par seconde
 
 ROTATION_THRESHOLD = 1
 DISTANCE_THRESHOLD = 1
@@ -57,8 +58,8 @@ class Robot(Graphique):
         self.distance_to_target = 0
         self.speed = speed  # Vitesse actuelle en mm/s
         self.acceleration = MAX_ACCEL_MM_S2
-        self.turning_speed = MAX_TURNING_SPEED  # En degrés par seconde
-        self.target_speed = MAX_SPEED_MM_S  # Vitesse cible
+        self.turning_speed = 0  # En degrés par seconde
+        self.target_speed = 0  # Vitesse cible
 
         self.px_width = (ROBOT_WIDTH_MM/TABLE_WIDTH_MM)*Screen_WIDTH
         self.px_height = (ROBOT_HEIGHT_MM/TABLE_HEIGHT_MM)*Screen_HEIGHT
@@ -98,49 +99,87 @@ class Robot(Graphique):
             angle -= 360  
         return angle
 
-    def update_target_speed(self, distance):
-        # Calculate the deceleration distance based on the robot's max speed and acceleration
-        deceleration_distance = (MAX_SPEED_MM_S ** 2) / (2 * MAX_ACCEL_MM_S2)
+    def update_speed_trapezoidal(self, dt, distance_restante):
 
-        if distance < deceleration_distance:
-            # Reduce speed proportionally to the remaining distance
-            self.target_speed = max(0, (distance / deceleration_distance) * MAX_SPEED_MM_S)
+        v_max = MAX_SPEED_MM_S
+        a = MAX_ACCEL_MM_S2
+
+        # Distance pour accélérer et décélérer
+        d_accel = (v_max ** 2) / (2 * a) # 266
+        d_decel = d_accel
+
+        # Vitesse max atteignable
+        if distance_restante < (d_accel + d_decel):
+            v_peak = math.sqrt(a * distance_restante)
+            # il faut limiter v_peak par v_max
+            if v_peak > v_max:
+                v_peak = v_max
         else:
-            # Maintain maximum speed
-            self.target_speed = MAX_SPEED_MM_S
+            v_peak = v_max
 
+        d_brake = (self.speed ** 2) / (2 * a)
 
-    def update_speed(self, dt, distance_restante):
-        #distance_restante = abs(distance_restante) # pour gérer les valeur négative
-        self.update_target_speed(distance_restante)  # Met à jour la vitesse cible en fonction de la distance
-        if self.speed < self.target_speed:
-            self.speed = min(self.speed + self.acceleration * dt, self.target_speed)
-            print("update_augmentation_speed: ", self.speed)
-        elif self.speed > self.target_speed:
-            self.speed = max(self.speed - self.acceleration * dt, self.target_speed)
-            print("update_diminution_speed: ", self.speed)
+        # Accélération
+        if self.speed < v_peak and distance_restante > d_brake:
+            self.speed = min(self.speed + a * dt, v_peak)
+            print("acceleration")
+        # Décélération uniquement si on est proche de la cible ET que la vitesse > 0
+        elif distance_restante <= d_brake and self.speed > 0:
+            self.speed = max(self.speed - a * dt, 0)
+            print("deceleration")
+        # Plateau
+        elif self.speed >= v_peak:
+            self.speed = v_peak
+            print("plateau")
+        else:
+            print("rien .....")
+
+        # Correction : si la distance restante est très faible, forcer la vitesse à zéro
+        if distance_restante < DISTANCE_THRESHOLD:
+            self.speed = 0
+
+        print("d_accel: ", d_accel, "v_peak: ", v_peak)
+
 
     def update_turning_speed(self, dt, angle_diff_restante):
-    # Calcul de l'accélération angulaire
-        max_deceleration_angle = (MAX_TURNING_SPEED ** 2) / (2 * self.acceleration)
 
-        # Si proche de l'objectif, décélérer
-        if abs(angle_diff_restante) < max_deceleration_angle:
-            self.turning_speed = max(0, (abs(angle_diff_restante) / max_deceleration_angle) * MAX_TURNING_SPEED)
+        w_max = MAX_TURNING_SPEED         # Vitesse angulaire maximale [°/s]
+        alpha = MAX_TURNING_ACCEL         # Accélération angulaire [°/s²]
+
+        # Distance angulaire pour accélérer ou décélérer (symétrique)
+        d_accel = (w_max ** 2) / (2 * alpha)  # En degrés
+        d_decel = d_accel
+
+        # Vitesse atteignable en fonction de l'angle restant
+        w_peak = math.sqrt(2 * alpha * abs(angle_diff_restante))
+        w_peak = min(w_peak, w_max)
+
+        # Distance de freinage à partir de la vitesse actuelle
+        d_brake = (self.turning_speed ** 2) / (2 * alpha)
+
+        # Phase d'accélération
+        if self.turning_speed < w_peak and abs(angle_diff_restante) > d_brake:
+            self.turning_speed = min(self.turning_speed + alpha * dt, w_peak)
+            print("accélération angulaire")
+
+        # Phase de décélération
+        elif abs(angle_diff_restante) <= d_brake and self.turning_speed > 0:
+            self.turning_speed = max(self.turning_speed - alpha * dt, 0)
+            print("décélération angulaire")
+
+        # Plateau
+        elif self.turning_speed >= w_peak:
+            self.turning_speed = w_peak
+            print("plateau angulaire")
+
         else:
-            # Sinon, utiliser la vitesse angulaire maximale
-            self.turning_speed = MAX_TURNING_SPEED
+            print("rien ... (rotation)")
 
-        # Ajuster la vitesse actuelle de rotation progressivement
-        if self.turning_speed > MAX_TURNING_SPEED:
-            self.turning_speed = MAX_TURNING_SPEED
+        # Arrêt complet si angle trop faible
+        if abs(angle_diff_restante) < ROTATION_THRESHOLD:
+            self.turning_speed = 0
 
-        if self.turning_speed < MAX_TURNING_SPEED:
-            self.turning_speed = min(self.turning_speed + self.acceleration * dt, MAX_TURNING_SPEED)
-        else:
-            self.turning_speed = max(self.turning_speed - self.acceleration * dt, 0)
-
-        return self.turning_speed
+        print(f"d_accel: {d_accel:.2f}, w_peak: {w_peak:.2f}, turning_speed: {self.turning_speed:.2f}? angle_diff_restante: {angle_diff_restante:.2f}")
 
 
     def calculate_target_angle(self, target_mm_x, target_mm_y):
@@ -181,7 +220,7 @@ class Robot(Graphique):
 
     def move_towards(self, distance_to_target, dt):
         # Mettre à jour la vitesse
-        self.update_speed(dt, distance_to_target)
+        self.update_speed_trapezoidal(dt, distance_to_target)
 
         radians = math.radians(self.angle)
         
@@ -203,7 +242,7 @@ class Robot(Graphique):
         else:
             # Réduire la distance restante
             distance_to_target -= distance_step
-            print("distance step: ", distance_step,"  distance restante: ", distance_to_target, "dt: ", dt)
+            print("distance step: ", distance_step,"  distance restante: ", distance_to_target,"self.speed: ", self.speed, "dt: ", dt)
         self.mm_x += dx
         self.mm_y += dy
         
@@ -214,7 +253,7 @@ class Robot(Graphique):
     
     def move_backwards(self, distance_to_target, dt):
         # Mettre à jour la vitesse
-        self.update_speed(dt, distance_to_target)
+        self.update_speed_trapezoidal(dt, distance_to_target)
 
         radians = math.radians(self.angle)
         
@@ -236,7 +275,7 @@ class Robot(Graphique):
         else:
             # Réduire la distance restante
             distance_to_target -= distance_step
-            print("distance step: ", distance_step,"  distance restante: ", distance_to_target,  "dt: ", dt)
+            print("distance step: ", distance_step,"  distance restante: ", distance_to_target,"self.speed: ", self.speed, "dt: ", dt)
         self.mm_x += dx
         self.mm_y += dy
         
