@@ -4,9 +4,9 @@ from setup import TABLE_WIDTH_MM, TABLE_HEIGHT_MM, FIELD_HEIGHT, FIELD_WIDTH
 # Robot specifications
 ROBOT_WIDTH_MM = 320
 ROBOT_HEIGHT_MM = 290
-INITIAL_X_POSITION = 300
-INITIAL_Y_POSITION = 950
-INITIAL_ANGLE = 0
+init_x_mm = 300
+init_y_mm = 950
+init_angle = 0
 
 MAX_SPEED_MM_S = 1000  # Vitesse maximale en mm/s
 MAX_ACCEL_MM_S2 = 2000  # Accélération maximale en mm/s^2
@@ -18,16 +18,32 @@ DISTANCE_THRESHOLD = 1
 
 FPS = 60
 
+def create_robot_surface():
+    px_width = (ROBOT_WIDTH_MM / TABLE_WIDTH_MM) * FIELD_WIDTH
+    px_height = (ROBOT_HEIGHT_MM / TABLE_HEIGHT_MM) * FIELD_HEIGHT
+    px_x = ((TABLE_WIDTH_MM - init_x_mm) / TABLE_WIDTH_MM) * FIELD_WIDTH
+    px_y = ((TABLE_HEIGHT_MM - init_y_mm) / TABLE_HEIGHT_MM) * FIELD_HEIGHT
+    band_height = 8  # hauteur de la bande en pixels
+
+    image_robot = pygame.Surface((px_width, px_height))
+    image_robot.fill((0, 255, 0))
+    image_robot.set_colorkey((0, 0, 0))
+    pygame.draw.rect(image_robot, (0, 0, 255), (0, 0, px_width, band_height))
+    rect_robot = image_robot.get_rect()
+    rect_robot.center = (px_x, px_y)
+    return image_robot, rect_robot
+
 class Graphique:
     def __init__(self, robot, image_robot, screen, scaled_vinyle):
         self.robot = robot  # Référence à l'instance de Robot existante
         self.image_robot = image_robot
         self.screen = screen
-        self.font = pygame.font.Font(None, 36)
+        self.font = pygame.font.Font(None, 25)# taille du text
         self.scaled_vinyle = scaled_vinyle
 
     def refesh_graphique(self):
-        self.screen.fill((0, 0, 0))
+        # Remplir uniquement la zone du terrain (FIELD_WIDTH x FIELD_HEIGHT) en noir
+        pygame.draw.rect(self.screen, (0, 0, 0), pygame.Rect(0, 0, FIELD_WIDTH, FIELD_HEIGHT))
         self.screen.blit(self.scaled_vinyle, (0, 0))
         self.robot.angle_px =self.robot.conversion_trigo_transform_rotate(self.robot.angle) 
         self.robot.px_x = self.robot.conversion_From_mmx_To_px_x(self.robot.mm_x)
@@ -38,13 +54,13 @@ class Graphique:
         self.screen.blit(rotated_image, robot_rect)
 
         coords_text = self.font.render(f"X: {int(self.robot.mm_x)} mm, Y: {int(self.robot.mm_y)} mm, O: {int(self.robot.angle)}", True, (255, 255, 255))
-        self.screen.blit(coords_text, (10, 10))  # Position du texte en haut à gauche
+        self.screen.blit(coords_text, (910, 10))  # Position du texte en haut à droite
 
         pygame.display.update()
 
 class Robot(Graphique):
     clock = pygame.time.Clock()
-    def __init__(self,scaled_vinyle=None, screen=None, image_robot= None, x= INITIAL_X_POSITION, y= INITIAL_Y_POSITION, angle=INITIAL_ANGLE, speed=0):
+    def __init__(self,scaled_vinyle=None, screen=None, image_robot= None, x= init_x_mm, y= init_y_mm, angle=init_angle, speed=0):
         self.mm_x = x
         self.mm_y = y 
         self.px_x = ((TABLE_WIDTH_MM - x) /TABLE_WIDTH_MM)*FIELD_WIDTH #Due to the origin point on the top left, we need to invert the axis: 
