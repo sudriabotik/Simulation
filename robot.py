@@ -1,6 +1,6 @@
 import math
 import pygame
-from setup import TABLE_WIDTH_MM, TABLE_HEIGHT_MM, Screen_WIDTH, Screen_HEIGHT
+from setup import TABLE_WIDTH_MM, TABLE_HEIGHT_MM, FIELD_HEIGHT, FIELD_WIDTH
 # Robot specifications
 ROBOT_WIDTH_MM = 320
 ROBOT_HEIGHT_MM = 290
@@ -9,14 +9,14 @@ INITIAL_Y_POSITION = 950
 INITIAL_ANGLE = 0
 
 MAX_SPEED_MM_S = 1000  # Vitesse maximale en mm/s
-MAX_ACCEL_MM_S2 = 800  # Accélération maximale en mm/s^2
+MAX_ACCEL_MM_S2 = 2000  # Accélération maximale en mm/s^2
 MAX_TURNING_SPEED = 500  # Vitesse de rotation en degrés par seconde
 MAX_TURNING_ACCEL = 300  # Accélération angulaire maximale en degrés par seconde
 
 ROTATION_THRESHOLD = 1
 DISTANCE_THRESHOLD = 1
 
-FPS = 30
+FPS = 60
 
 class Graphique:
     def __init__(self, robot, image_robot, screen, scaled_vinyle):
@@ -47,8 +47,8 @@ class Robot(Graphique):
     def __init__(self,scaled_vinyle=None, screen=None, image_robot= None, x= INITIAL_X_POSITION, y= INITIAL_Y_POSITION, angle=INITIAL_ANGLE, speed=0):
         self.mm_x = x
         self.mm_y = y 
-        self.px_x = ((TABLE_WIDTH_MM - x) /TABLE_WIDTH_MM)*Screen_WIDTH #Due to the origin point on the top left, we need to invert the axis: 
-        self.px_y = ((TABLE_HEIGHT_MM - y)/TABLE_HEIGHT_MM)*Screen_HEIGHT# valeur de x en pixel
+        self.px_x = ((TABLE_WIDTH_MM - x) /TABLE_WIDTH_MM)*FIELD_WIDTH #Due to the origin point on the top left, we need to invert the axis: 
+        self.px_y = ((TABLE_HEIGHT_MM - y)/TABLE_HEIGHT_MM)*FIELD_HEIGHT# valeur de x en pixel
         self.angle = angle
         self.angle_px = angle - 90
         self.angle_to_target = angle
@@ -61,8 +61,8 @@ class Robot(Graphique):
         self.turning_speed = 0  # En degrés par seconde
         self.target_speed = 0  # Vitesse cible
 
-        self.px_width = (ROBOT_WIDTH_MM/TABLE_WIDTH_MM)*Screen_WIDTH
-        self.px_height = (ROBOT_HEIGHT_MM/TABLE_HEIGHT_MM)*Screen_HEIGHT
+        self.px_width = (ROBOT_WIDTH_MM/TABLE_WIDTH_MM)*FIELD_WIDTH
+        self.px_height = (ROBOT_HEIGHT_MM/TABLE_HEIGHT_MM)*FIELD_HEIGHT
         self.mm_width = ROBOT_WIDTH_MM
         self.mm_height = ROBOT_HEIGHT_MM
 
@@ -74,19 +74,19 @@ class Robot(Graphique):
 
 
     def conversion_From_mmx_To_px_x(self, mm_x):
-        px_x = ((TABLE_WIDTH_MM - mm_x) /TABLE_WIDTH_MM)*Screen_WIDTH
+        px_x = ((TABLE_WIDTH_MM - mm_x) /TABLE_WIDTH_MM)*FIELD_WIDTH
         return px_x
     
     def conversion_From_mmy_To_px_y(self, mm_y):
-        px_y = ((TABLE_HEIGHT_MM - mm_y)/TABLE_HEIGHT_MM)*Screen_HEIGHT
+        px_y = ((TABLE_HEIGHT_MM - mm_y)/TABLE_HEIGHT_MM)*FIELD_HEIGHT
         return px_y
 
     def conversion_From_px_x_To_mm_x(self, px_x):
-        x_mm = (Screen_WIDTH - px_x) * (TABLE_WIDTH_MM / Screen_WIDTH)
+        x_mm = (FIELD_WIDTH - px_x) * (TABLE_WIDTH_MM / FIELD_WIDTH)
         return x_mm
     
     def conversion_From_px_y_To_mmy(self, px_y):
-        y_mm = (Screen_HEIGHT - px_y) * (TABLE_HEIGHT_MM / Screen_HEIGHT)
+        y_mm = (FIELD_HEIGHT - px_y) * (TABLE_HEIGHT_MM / FIELD_HEIGHT)
         return y_mm
 
     def conversion_trigo_transform_rotate(self, angle):

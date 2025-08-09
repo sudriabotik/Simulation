@@ -1,11 +1,11 @@
 import pygame
 import math
 from robot import Robot, Graphique ,ROTATION_THRESHOLD, DISTANCE_THRESHOLD
-from setup import init_pygame,load_image, TABLE_WIDTH_MM, TABLE_HEIGHT_MM, Screen_WIDTH, Screen_HEIGHT
+from setup import init_pygame,load_image, FIELD_WIDTH, FIELD_HEIGHT
 import read_strat_file as rsf
 screen = init_pygame()
 vinyle, img_width, img_height = load_image()
-scaled_vinyle = pygame.transform.scale(vinyle, (Screen_WIDTH, Screen_HEIGHT))
+scaled_vinyle = pygame.transform.scale(vinyle, (FIELD_WIDTH, FIELD_HEIGHT))
 
 file_strat_path = 'test.txt'
 
