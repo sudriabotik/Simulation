@@ -8,10 +8,14 @@ init_x_mm = 300
 init_y_mm = 950
 init_angle = 0
 
-MAX_SPEED_MM_S = 1000  # Vitesse maximale en mm/s
-MAX_ACCEL_MM_S2 = 2000  # Accélération maximale en mm/s^2
-MAX_TURNING_SPEED = 500  # Vitesse de rotation en degrés par seconde
-MAX_TURNING_ACCEL = 300  # Accélération angulaire maximale en degrés par seconde
+# Vitesse maximale en mm/s
+# Accélération maximale en mm/s^2
+# Vitesse de rotation en degrés par seconde
+# Accélération angulaire maximale en degrés par seconde
+max_speed_mm_s  = 1000
+max_accel_mm_s2 = 2000
+max_turning_speed = 500
+max_turning_accel = 300
 
 ROTATION_THRESHOLD = 1
 DISTANCE_THRESHOLD = 1
@@ -73,8 +77,11 @@ class Robot(Graphique):
         self.distance_y_to_target = 0
         self.distance_to_target = 0
         self.speed = speed  # Vitesse actuelle en mm/s
-        self.acceleration = MAX_ACCEL_MM_S2
+        self.max_speed = max_speed_mm_s
+        self.acceleration = max_accel_mm_s2
         self.turning_speed = 0  # En degrés par seconde
+        self.max_turning_speed = max_turning_speed
+        self.turning_acceleration = max_turning_accel
         self.target_speed = 0  # Vitesse cible
 
         self.px_width = (ROBOT_WIDTH_MM/TABLE_WIDTH_MM)*FIELD_WIDTH
@@ -117,8 +124,8 @@ class Robot(Graphique):
 
     def update_speed_trapezoidal(self, dt, distance_restante):
 
-        v_max = MAX_SPEED_MM_S
-        a = MAX_ACCEL_MM_S2
+        v_max = self.max_speed
+        a = self.acceleration
 
         # Distance pour accélérer et décélérer
         d_accel = (v_max ** 2) / (2 * a) # 266
@@ -159,8 +166,8 @@ class Robot(Graphique):
 
     def update_turning_speed(self, dt, angle_diff_restante):
 
-        w_max = MAX_TURNING_SPEED         # Vitesse angulaire maximale [°/s]
-        alpha = MAX_TURNING_ACCEL         # Accélération angulaire [°/s²]
+        w_max = self.max_turning_speed         # Vitesse angulaire maximale [°/s]
+        alpha = self.turning_acceleration         # Accélération angulaire [°/s²]
 
         # Distance angulaire pour accélérer ou décélérer (symétrique)
         d_accel = (w_max ** 2) / (2 * alpha)  # En degrés
@@ -305,28 +312,28 @@ class Robot(Graphique):
     ##########
 
     def avancer(self, distance, ratio_vitesse):
-        global MAX_SPEED_MM_S 
-        MAX_SPEED_MM_S = MAX_SPEED_MM_S * (ratio_vitesse /100)
+        #global self.max_speed 
+        self.max_speed = self.max_speed * (ratio_vitesse /100)
         self.distance_to_target = distance
         clock = pygame.time.Clock()
         while self.distance_to_target > DISTANCE_THRESHOLD:
             dt = clock.tick(FPS) / 1000
             self.distance_to_target = self.move_towards(self.distance_to_target, dt)
 
-        MAX_SPEED_MM_S = MAX_SPEED_MM_S * (100 / ratio_vitesse)
+        self.max_speed = self.max_speed * (100 / ratio_vitesse)
 
         return print("fin foncion avancer")
 
     def reculer(self, distance, ratio_vitesse):
-        global MAX_SPEED_MM_S 
-        MAX_SPEED_MM_S = MAX_SPEED_MM_S * (ratio_vitesse/100)
+        #global self.max_speed 
+        self.max_speed = self.max_speed * (ratio_vitesse/100)
         self.distance_to_target = distance
         clock = pygame.time.Clock()
         while self.distance_to_target > DISTANCE_THRESHOLD:
             dt = clock.tick(FPS) / 1000
             self.distance_to_target = self.move_backwards(self.distance_to_target, dt)
 
-        MAX_SPEED_MM_S = MAX_SPEED_MM_S * (100 / ratio_vitesse)
+        self.max_speed = self.max_speed * (100 / ratio_vitesse)
 
         return print("fin foncion reculer")
     

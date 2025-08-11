@@ -1,6 +1,7 @@
 import pygame
 import pygame_gui
 import os, json
+import sys
 
 # Constants for the table size in mm and image path
 TABLE_WIDTH_MM = 3000
@@ -32,13 +33,22 @@ def make_theme_with_pygame_font(theme_filename="theme.json", size=16):
         json.dump(theme, f)
     return theme_path
 
+def resource_path(relative_path):
+    """Récupère le chemin absolu d'une ressource, que ce soit en .exe ou en dev."""
+    try:
+        base_path = sys._MEIPASS  # Dossier temporaire PyInstaller
+    except Exception:
+        base_path = os.path.abspath(".")  # Mode normal (dev)
+
+    return os.path.join(base_path, relative_path)
+
 def init_pygame():
     pygame.init()
     screen = pygame.display.set_mode((Screen_WIDTH, Screen_HEIGHT))
     return screen
 
 def load_image():
-    image = pygame.image.load(IMAGE_PATH)
+    image = pygame.image.load(resource_path(IMAGE_PATH))
     img_width, img_height = image.get_size()
     return image, img_width, img_height
 

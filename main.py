@@ -12,6 +12,7 @@ enregistrement = False
 commands = None
 start_strat = False 
 running = True
+mouse_mm_x_valid, mouse_mm_y_valid = 0,0
 
 screen, scaled_vinyle, manager = init()
 clock = pygame.time.Clock()  # Horloge pour gérer le temps
@@ -20,8 +21,11 @@ image_robot, rect_robot = create_robot_surface()
 
 robot = Robot(scaled_vinyle, screen, image_robot)
 
-(ui_panel, lbl_x, ent_x, lbl_y, ent_y, lbl_teta, ent_teta, lbl_file, ent_file,
-            btn_apply, btn_start, btn_enregistrer, lbl_rec_file, ent_rec_file, btn_valid, lbl_mouse_coords) = create_sidebar(manager, robot, enregistrement)
+(ui_panel, lbl_init, ent_x, ent_y, ent_o, lbl_x, lbl_y, lbl_o,
+        lbl_speed, ent_max_speed, ent_accel, ent_max_turning_speed, ent_turning_accel,
+        lbl_max_speed, lbl_accel, lbl_max_turning_speed, lbl_turning_accel,
+        lbl_file, ent_file, btn_apply, btn_start, btn_enregistrer,
+        lbl_rec_file, ent_rec_file, btn_valid, lbl_mouse_coords,lbl_mouse_mm_valid) = create_sidebar(manager, robot, enregistrement)
 
 while running:
     dt = clock.tick(FPS) / 1000  # Limite à 60 FPS et conversion en secondes
@@ -32,13 +36,22 @@ while running:
 
         manager.process_events(event)
 
+        target_px_x, target_px_y = pygame.mouse.get_pos() 
+        mouse_mm_x = int ( robot.conversion_From_px_x_To_mm_x(target_px_x))
+        mouse_mm_y = int ( robot.conversion_From_px_y_To_mmy(target_px_y))
+        lbl_mouse_coords.set_text(f"Souris terrain: X={mouse_mm_x} mm, Y={mouse_mm_y} mm")
+
         # Bouton "Appliquer" -> relire toutes les valeurs d’un coup (optionnel)
         if event.type == pygame_gui.UI_BUTTON_PRESSED :
             if event.ui_element == btn_apply:
                 robot.mm_x = parse_number(ent_x.get_text(), robot.mm_x)
                 robot.mm_y = parse_number(ent_y.get_text(), robot.mm_y)
-                robot.angle = parse_number(ent_teta.get_text(), robot.angle)
+                robot.angle = parse_number(ent_o.get_text(), robot.angle)
                 file_strat_path = ent_file.get_text()
+                robot.max_speed = parse_number(ent_max_speed.get_text(), robot.max_speed)
+                robot.acceleration = parse_number(ent_accel.get_text(), robot.acceleration)
+                robot.max_turning_speed = parse_number(ent_max_turning_speed.get_text(), robot.max_turning_speed)
+                robot.turning_acceleration = parse_number(ent_turning_accel.get_text(), robot.turning_acceleration)
                 print("bouton appliquer pressed")
 
             if  event.ui_element == btn_start:
@@ -58,7 +71,10 @@ while running:
                 else:
                     btn_enregistrer.set_text('Enregistrement OFF')
 
-
+            if event.ui_element == btn_valid:
+                write_rejoindre_command(mouse_mm_x_valid, mouse_mm_y_valid, file_rec_path)
+                robot.rejoindre(mouse_mm_x_valid, mouse_mm_y_valid, 0, 100)
+        ''' 
         if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
             if event.ui_element == ent_x:
 
@@ -67,25 +83,41 @@ while running:
             elif event.ui_element == ent_y:
                 robot.mm_y = parse_number(event.text, robot.mm_y)
                 ent_y.set_text(str(robot.mm_y))
-            elif event.ui_element == ent_teta:
+            elif event.ui_element == ent_o:
                 robot.angle = parse_number(event.text, robot.angle)
-                ent_teta.set_text(str(robot.angle))
+                ent_o.set_text(str(robot.angle))
             elif event.ui_element == ent_file:
                 file_strat_path = event.text
                 ent_file.set_text(file_strat_path)
             elif event.ui_element == ent_rec_file:
                 file_rec_path = event.text
                 ent_rec_file.set_text(file_rec_path)
-
-        if enregistrement == True:
-            target_px_x, target_px_y = pygame.mouse.get_pos() 
-            mouse_mm_x = int ( robot.conversion_From_px_x_To_mm_x(target_px_x))
-            mouse_mm_y = int ( robot.conversion_From_px_y_To_mmy(target_px_y))
-            lbl_mouse_coords.set_text(f"Souris terrain: X={mouse_mm_x} mm, Y={mouse_mm_y} mm")
-            if (event.type == pygame.MOUSEBUTTONDOWN):
-                write_rejoindre_command(mouse_mm_x, mouse_mm_y, file_rec_path)
+            elif event.ui_element == ent_max_speed:
+                robot.max_speed = parse_number(event.text, robot.max_speed)
+                ent_max_speed.set_text(str(robot.max_speed))
+            elif event.ui_element == ent_accel:
+                robot.acceleration = parse_number(event.text, robot.acceleration)
+                ent_accel.set_text(str(robot.acceleration))
+            elif event.ui_element == ent_max_turning_speed:
+                robot.max_turning_speed = parse_number(event.text, robot.max_turning_speed)
+                ent_max_turning_speed.set_text(str(robot.max_turning_speed))
+            elif event.ui_element == ent_turning_accel:
+                robot.turning_acceleration = parse_number(event.text, robot.turning_acceleration)
+                ent_turning_accel.set_text(str(robot.turning_acceleration))
+            '''
+        if (enregistrement == True) :
+            lbl_mouse_mm_valid.set_text(f"value____: X={mouse_mm_x_valid} mm, Y={mouse_mm_y_valid} mm")
+            if (event.type == pygame.MOUSEBUTTONDOWN) and (mouse_mm_x > 0):
+                mouse_mm_x_valid = mouse_mm_x
+                mouse_mm_y_valid = mouse_mm_y
+                #lbl_mouse_mm_valid.set_text(f"value____: X={mouse_mm_x_valid} mm, Y={mouse_mm_y_valid} mm")  
         else:
-            lbl_mouse_coords.set_text("")
+            #lbl_mouse_coords.set_text("")
+            lbl_mouse_mm_valid.set_text("")
+
+        if ( (enregistrement == False) and (start_strat == False) and (event.type == pygame.MOUSEBUTTONDOWN) and (mouse_mm_x > 0)):
+            robot.rejoindre(mouse_mm_x, mouse_mm_y, 0, 100)
+
                 
 
     pygame.draw.rect(screen, (60, 60, 60), pygame.Rect(0, 0, Screen_WIDTH - UI_W, Screen_HEIGHT))  # ta scène 900 px
@@ -93,7 +125,7 @@ while running:
     manager.draw_ui(screen)
 
     strategie(robot, start_strat, commands)
-
+    print("mouse_mm_x_valid: ",mouse_mm_x_valid, "mouse_mm_y_valid: ",mouse_mm_y_valid,"mouse_mm_x: ",mouse_mm_x,"mouse_mm_y: ",mouse_mm_y)
     robot.graphique.refesh_graphique()
 
 pygame.quit()
