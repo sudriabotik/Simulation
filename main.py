@@ -74,37 +74,7 @@ while running:
             if event.ui_element == btn_valid:
                 write_rejoindre_command(mouse_mm_x_valid, mouse_mm_y_valid, file_rec_path)
                 robot.rejoindre(mouse_mm_x_valid, mouse_mm_y_valid, 0, 100)
-        ''' 
-        if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
-            if event.ui_element == ent_x:
 
-                robot.mm_x = parse_number(event.text, robot.mm_x)
-                ent_x.set_text(str(robot.mm_x))
-            elif event.ui_element == ent_y:
-                robot.mm_y = parse_number(event.text, robot.mm_y)
-                ent_y.set_text(str(robot.mm_y))
-            elif event.ui_element == ent_o:
-                robot.angle = parse_number(event.text, robot.angle)
-                ent_o.set_text(str(robot.angle))
-            elif event.ui_element == ent_file:
-                file_strat_path = event.text
-                ent_file.set_text(file_strat_path)
-            elif event.ui_element == ent_rec_file:
-                file_rec_path = event.text
-                ent_rec_file.set_text(file_rec_path)
-            elif event.ui_element == ent_max_speed:
-                robot.max_speed = parse_number(event.text, robot.max_speed)
-                ent_max_speed.set_text(str(robot.max_speed))
-            elif event.ui_element == ent_accel:
-                robot.acceleration = parse_number(event.text, robot.acceleration)
-                ent_accel.set_text(str(robot.acceleration))
-            elif event.ui_element == ent_max_turning_speed:
-                robot.max_turning_speed = parse_number(event.text, robot.max_turning_speed)
-                ent_max_turning_speed.set_text(str(robot.max_turning_speed))
-            elif event.ui_element == ent_turning_accel:
-                robot.turning_acceleration = parse_number(event.text, robot.turning_acceleration)
-                ent_turning_accel.set_text(str(robot.turning_acceleration))
-            '''
         if (enregistrement == True) :
             lbl_mouse_mm_valid.set_text(f"value____: X={mouse_mm_x_valid} mm, Y={mouse_mm_y_valid} mm")
             if (event.type == pygame.MOUSEBUTTONDOWN) and (mouse_mm_x > 0):
@@ -117,8 +87,6 @@ while running:
 
         if ( (enregistrement == False) and (start_strat == False) and (event.type == pygame.MOUSEBUTTONDOWN) and (mouse_mm_x > 0)):
             robot.rejoindre(mouse_mm_x, mouse_mm_y, 0, 100)
-
-                
 
     pygame.draw.rect(screen, (60, 60, 60), pygame.Rect(0, 0, Screen_WIDTH - UI_W, Screen_HEIGHT))  # ta scène 900 px
     manager.update(dt)
