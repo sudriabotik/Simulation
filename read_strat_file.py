@@ -1,7 +1,18 @@
 import re
+import os
 
 def parse_fdd_commands(file_path):
     fdd_commands = []
+    
+    # Vérifier si le fichier existe dans le dossier strategie_txt
+    if not os.path.exists(file_path):
+        # Essayer dans le dossier strategie_txt
+        strategie_path = os.path.join("strategie_txt", file_path)
+        if os.path.exists(strategie_path):
+            file_path = strategie_path
+        else:
+            raise FileNotFoundError(f"Fichier de stratégie non trouvé: {file_path}")
+    
     with open(file_path, 'r') as file:
         for line in file:
             line = line.strip()
@@ -32,6 +43,30 @@ def execute_fdd_commands(commands, robot_instance):
             print(f"Fonction {function_name} non reconnue ou non prise en charge.")
 
 
+def convert_angle_from_robot_to_simulation(angle):
+    """ l'emplacement du 0 degrés et du sens de rotation ne sont 
+    pas les meme entre la simulations et la robot
+    pour résoudre ce problème on modifie la valeur de l'angle pour quel
+    corresponde au cercle trigonométrique."""
+
+    """
+    Robot --> simulation
+    0 --> 180
+    90 --> 90
+    180 --> 0
+    190 --> 350
+    270 --> 270
+    340 (340-180)=160 --> 360-160
+    """
+
+    if angle <=180:
+        angle = 180 - angle
+    else:
+        angle = 360 - (angle - 180) 
+    return angle 
+
+ 
+
 def strategie(robot, flag_start=False, commands=None):
 
     if not flag_start:
@@ -53,6 +88,7 @@ def strategie(robot, flag_start=False, commands=None):
 
         elif function_name == "orienter":
             angle = int(args[0])
+            angle = convert_angle_from_robot_to_simulation(angle)
             ratio_vitesse = int(args[1])
             robot.orienter(angle, ratio_vitesse)
             print("angle: ", angle, "  ratio_vitesse: ", ratio_vitesse)

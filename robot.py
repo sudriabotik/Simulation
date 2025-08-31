@@ -42,9 +42,21 @@ class Graphique:
         self.robot = robot  # Référence à l'instance de Robot existante
         self.image_robot = image_robot
         self.screen = screen
-        self.font = pygame.font.Font(None, 25)# taille du text
+        self.font = pygame.font.Font(None, 18)# taille du text réduite
+        self.chrono_font = pygame.font.Font(None, 24)# police pour le chronomètre
         self.scaled_vinyle = scaled_vinyle
+        self.strategy_start_time = 0
+        self.strategy_elapsed_time = 0
 
+    def update_strategy_time(self, current_time, strategy_active):
+        if strategy_active and self.strategy_start_time == 0:
+            self.strategy_start_time = current_time
+        elif strategy_active and self.strategy_start_time > 0:
+            self.strategy_elapsed_time = current_time - self.strategy_start_time
+        elif not strategy_active:
+            self.strategy_start_time = 0
+            self.strategy_elapsed_time = 0
+    
     def refesh_graphique(self):
         # Remplir uniquement la zone du terrain (FIELD_WIDTH x FIELD_HEIGHT) en noir
         pygame.draw.rect(self.screen, (0, 0, 0), pygame.Rect(0, 0, FIELD_WIDTH, FIELD_HEIGHT))
@@ -57,8 +69,14 @@ class Graphique:
         robot_rect = rotated_image.get_rect(center=(self.robot.px_x, self.robot.px_y))
         self.screen.blit(rotated_image, robot_rect)
 
+        # Affichage de la position du robot à gauche de la sidebar
         coords_text = self.font.render(f"X: {int(self.robot.mm_x)} mm, Y: {int(self.robot.mm_y)} mm, O: {int(self.robot.angle)}", True, (255, 255, 255))
-        self.screen.blit(coords_text, (910, 10))  # Position du texte en haut à droite
+        self.screen.blit(coords_text, (910, 10))  # Position à gauche de la sidebar
+        
+        # Affichage du chronomètre à droite de la sidebar
+        chrono_text = self.chrono_font.render(f"{int(self.strategy_elapsed_time)}s", True, (255, 255, 0))
+        chrono_width = chrono_text.get_width()
+        self.screen.blit(chrono_text, (1200 - chrono_width - 10, 10))  # Position à droite de la sidebar
 
         pygame.display.update()
 
@@ -208,10 +226,10 @@ class Robot(Graphique):
     def calculate_target_angle(self, target_mm_x, target_mm_y):
         self.distance_x_to_target = self.mm_x - target_mm_x
         self.distance_y_to_target = target_mm_y - self.mm_y
-        self.distance_to_target = int(math.hypot(self.distance_x_to_target, self.distance_y_to_target))
+        self.distance_to_target = math.hypot(self.distance_x_to_target, self.distance_y_to_target)  # Garder la précision
         print("distance_x:", self.distance_x_to_target, "distance_y:", self.distance_y_to_target)
 
-        self.angle_to_target = int(math.degrees(math.atan2(self.distance_y_to_target, self.distance_x_to_target)))
+        self.angle_to_target = math.degrees(math.atan2(self.distance_y_to_target, self.distance_x_to_target))  # Garder la précision
         self.angle_diff_to_target = self.normalize_angle(self.angle_to_target - self.angle)
 
         print("target angle:", self.angle_to_target)
@@ -257,9 +275,10 @@ class Robot(Graphique):
         # Vérifier si ce pas dépasse la distance restante
         if distance_step >= distance_to_target:
             # Ajuster les incréments pour atteindre exactement la cible
-            ratio = distance_to_target / distance_step
-            dx *= ratio
-            dy *= ratio
+            if distance_step > 0:  # Éviter division par zéro
+                ratio = distance_to_target / distance_step
+                dx *= ratio
+                dy *= ratio
             # Distance restante atteinte, on peut arrêter le mouvement
             distance_to_target = 0
         else:
@@ -290,9 +309,10 @@ class Robot(Graphique):
         # Vérifier si ce pas dépasse la distance restante
         if distance_step >= abs(distance_to_target):
             # Ajuster les incréments pour atteindre exactement la cible
-            ratio = distance_to_target / distance_step
-            dx *= ratio
-            dy *= ratio
+            if distance_step > 0:  # Éviter division par zéro
+                ratio = distance_to_target / distance_step
+                dx *= ratio
+                dy *= ratio
             # Distance restante atteinte, on peut arrêter le mouvement
             distance_to_target = 0
         else:
@@ -354,16 +374,30 @@ class Robot(Graphique):
         return print("fin foncion cibler")
     
     def rejoindre (self, target_mm_x, target_mm_y, face, ratio_vitesse): # on considère la face 0, c'est la face avant. 
+        # Calcul initial de l'angle et de la distance
         self.calculate_target_angle(target_mm_x, target_mm_y)
         if face == 1: #si on veut la face arriére
             self.angle_to_target = self.normalize_angle(self.angle_to_target + 180)
 
+        # Orientation vers la cible
         self.orienter(self.angle_to_target, ratio_vitesse)
 
-        if face == 1: # on recule
-            self.reculer(self.distance_to_target, ratio_vitesse)
-        else: # on avance
-            self.avancer(self.distance_to_target, ratio_vitesse)
+        # Recalculer la distance exacte après rotation pour corriger les erreurs
+        distance_x = self.mm_x - target_mm_x
+        distance_y = target_mm_y - self.mm_y
+        distance_exacte = math.hypot(distance_x, distance_y)
+        
+        print(f"Distance recalculée après rotation: {distance_exacte:.2f} mm")
 
+        if face == 1: # on recule
+            self.reculer(distance_exacte, ratio_vitesse)
+        else: # on avance
+            self.avancer(distance_exacte, ratio_vitesse)
+
+        # Vérification finale de la position
+        final_distance_x = self.mm_x - target_mm_x
+        final_distance_y = target_mm_y - self.mm_y
+        final_error = math.hypot(final_distance_x, final_distance_y)
+        print(f"Erreur finale de positionnement: {final_error:.2f} mm")
 
         return print("fin foncion rejoindre")

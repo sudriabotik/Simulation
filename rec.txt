@@ -1,3 +1,0 @@
-fdd.rejoindre("2500", "1003", "0", "100", ser)
-fdd.rejoindre("0500", "1406", "0", "100", ser)
-fdd.rejoindre("1423", "0926", "0", "100", ser)

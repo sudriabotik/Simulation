@@ -4,14 +4,30 @@ import pygame_gui
 from robot import Robot, FPS, create_robot_surface
 from setup import init,Screen_WIDTH, Screen_HEIGHT
 from read_strat_file import strategie, parse_fdd_commands
-from rec_strat import write_rejoindre_command, create_txt_file, display_mouse_coords
-file_strat_path = 'test_V2.txt'
+from rec_strat import write_rejoindre_command, write_orienter_command, create_txt_file, display_mouse_coords
+file_strat_path = 'test.txt'
 file_rec_path = 'rec.txt'
 
+''' 
+to do : 
+Les prochaines updates c’est :
+- Rajouter les bouton orientation et rejoindre pour choisir la fonction que l’on veut faire. 
+- Les boutons de la face et de la vitesse pour pouvoir custom chaque mouvement. 
+- ⁠le temps d’une strate
+- Les points remarcable
+- pouvoir mettre en pause une strate
+- pouvoir completer une strate deja commencer 
+'''  
+face_robot = 0
+vitesse_robot = 100
+fonction_robot = "rejoindre"  # "rejoindre" ou "orienter"
 enregistrement = False
 commands = None
 start_strat = False 
+stop_strat = False
+pause_strat = False
 running = True
+strategy_start_time = 0
 mouse_mm_x_valid, mouse_mm_y_valid = 0,0
 
 screen, scaled_vinyle, manager = init()
@@ -25,7 +41,8 @@ robot = Robot(scaled_vinyle, screen, image_robot)
         lbl_speed, ent_max_speed, ent_accel, ent_max_turning_speed, ent_turning_accel,
         lbl_max_speed, lbl_accel, lbl_max_turning_speed, lbl_turning_accel,
         lbl_file, ent_file, btn_apply, btn_start, btn_enregistrer,
-        lbl_rec_file, ent_rec_file, btn_valid, lbl_mouse_coords,lbl_mouse_mm_valid) = create_sidebar(manager, robot, enregistrement)
+        lbl_rec_file, ent_rec_file, btn_valid, lbl_mouse_coords, lbl_mouse_mm_valid,
+        btn_stop, btn_pause, btn_face, btn_vitesse, btn_fonction) = create_sidebar(manager, robot, enregistrement)
 
 while running:
     dt = clock.tick(FPS) / 1000  # Limite à 60 FPS et conversion en secondes
@@ -61,19 +78,69 @@ while running:
                 except Exception as e:
                     print(f"Erreur lors de la lecture du fichier de stratégie : {e}")
                 start_strat = True
+                strategy_start_time = pygame.time.get_ticks() / 1000.0  # Temps en secondes
                 print("Start strategy execution...")
             
             if event.ui_element == btn_enregistrer:
                 enregistrement = not enregistrement
                 if enregistrement:
+                    file_rec_path = ent_rec_file.get_text()
                     btn_enregistrer.set_text('Enregistrement ON')
-                    create_txt_file(file_rec_path)
+                    file_rec_path = create_txt_file(file_rec_path)  # Récupérer le chemin complet
                 else:
                     btn_enregistrer.set_text('Enregistrement OFF')
 
             if event.ui_element == btn_valid:
-                write_rejoindre_command(mouse_mm_x_valid, mouse_mm_y_valid, file_rec_path)
-                robot.rejoindre(mouse_mm_x_valid, mouse_mm_y_valid, 0, 100)
+                if fonction_robot == "rejoindre":
+                    write_rejoindre_command(mouse_mm_x_valid, mouse_mm_y_valid, file_rec_path, str(face_robot), str(vitesse_robot))
+                    robot.rejoindre(mouse_mm_x_valid, mouse_mm_y_valid, face_robot, vitesse_robot)
+                elif fonction_robot == "orienter":
+                    write_orienter_command(robot.angle, file_rec_path, str(vitesse_robot))
+                    # Pour orienter, on peut utiliser l'angle actuel du robot ou calculer l'angle vers la souris
+                    target_angle = robot.calculate_target_angle(mouse_mm_x_valid, mouse_mm_y_valid)
+                    robot.orienter(target_angle, vitesse_robot)
+            
+            if event.ui_element == btn_stop:
+                start_strat = False
+                stop_strat = True
+                pause_strat = False
+                commands = None
+                strategy_start_time = 0
+                print("Strategy stopped")
+            
+            if event.ui_element == btn_pause:
+                if pause_strat:
+                    pause_strat = False
+                    btn_pause.set_text("Pause")
+                    print("Strategy resumed")
+                else:
+                    pause_strat = True
+                    btn_pause.set_text("Resume")
+                    print("Strategy paused")
+            
+            if event.ui_element == btn_face:
+                face_robot = 1 - face_robot  # Toggle entre 0 et 1
+                btn_face.set_text(f"Face: {face_robot}")
+                print(f"Face changed to: {face_robot}")
+            
+            if event.ui_element == btn_vitesse:
+                # Cycle entre 25%, 50%, 75%, 100%
+                vitesse_options = [25, 50, 75, 100]
+                current_index = vitesse_options.index(vitesse_robot) if vitesse_robot in vitesse_options else 3
+                next_index = (current_index + 1) % len(vitesse_options)
+                vitesse_robot = vitesse_options[next_index]
+                btn_vitesse.set_text(f"Vitesse: {vitesse_robot}%")
+                print(f"Speed changed to: {vitesse_robot}%")
+            
+            if event.ui_element == btn_fonction:
+                if fonction_robot == "rejoindre":
+                    fonction_robot = "orienter"
+                    btn_fonction.set_text("Fonction: Orienter")
+                    print("Function changed to: orienter")
+                else:
+                    fonction_robot = "rejoindre"
+                    btn_fonction.set_text("Fonction: Rejoindre")
+                    print("Function changed to: rejoindre")
 
         if (enregistrement == True) :
             lbl_mouse_mm_valid.set_text(f"value____: X={mouse_mm_x_valid} mm, Y={mouse_mm_y_valid} mm")
@@ -92,8 +159,14 @@ while running:
     manager.update(dt)
     manager.draw_ui(screen)
 
-    strategie(robot, start_strat, commands)
-    print("mouse_mm_x_valid: ",mouse_mm_x_valid, "mouse_mm_y_valid: ",mouse_mm_y_valid,"mouse_mm_x: ",mouse_mm_x,"mouse_mm_y: ",mouse_mm_y)
+    # Mise à jour du chronomètre
+    current_time = pygame.time.get_ticks() / 1000.0  # Temps en secondes
+    if robot.graphique:
+        robot.graphique.update_strategy_time(current_time if strategy_start_time > 0 else 0, start_strat and not pause_strat)
+    
+    if not pause_strat:
+        strategie(robot, start_strat, commands)
+    #print("mouse_mm_x_valid: ",mouse_mm_x_valid, "mouse_mm_y_valid: ",mouse_mm_y_valid,"mouse_mm_x: ",mouse_mm_x,"mouse_mm_y: ",mouse_mm_y)
     robot.graphique.refesh_graphique()
 
 pygame.quit()
